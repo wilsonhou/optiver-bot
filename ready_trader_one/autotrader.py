@@ -9,6 +9,13 @@ class AutoTrader(BaseAutoTrader):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         """Initialise a new instance of the AutoTrader class."""
         super(AutoTrader, self).__init__(loop)
+        self.order_ids = itertools.count(1)
+        self.ask_id = 0
+        self.ask_price = 0
+        self.bid_id = 0
+        self.bid_price = 0
+        self.position = 0
+        self.future_position = 0
 
     def on_error_message(self, client_order_id: int, error_message: bytes) -> None:
         """Called when the exchange detects an error.
@@ -48,7 +55,8 @@ class AutoTrader(BaseAutoTrader):
         future_position and etf_position will always be the inverse of each
         other (i.e. future_position == -1 * etf_position).
         """
-        pass
+        self.posision = etf_position
+        self.future_position = future_position
 
     def on_trade_ticks_message(self, instrument: int, trade_ticks: List[Tuple[int, int]]) -> None:
         """Called periodically to report trading activity on the market.
