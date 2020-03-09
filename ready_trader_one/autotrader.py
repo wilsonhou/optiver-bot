@@ -34,6 +34,13 @@ class AutoTrader(BaseAutoTrader):
         prices are reported along with the volume available at each of those
         price levels.
         """
+        # Not sure what instrument is but: assuming bid_prices and ask_prices use a queue,
+        # Wtf does position refer to
+
+        bid_price_current = bid_prices[0]
+        ask_price_current = ask_prices[0]
+
+
         pass
 
     def on_order_status_message(self, client_order_id: int, fill_volume: int, remaining_volume: int, fees: int) -> None:
@@ -57,6 +64,7 @@ class AutoTrader(BaseAutoTrader):
         """
         self.posision = etf_position
         self.future_position = future_position
+        print("\n\tPosition change!\n")
 
     def on_trade_ticks_message(self, instrument: int, trade_ticks: List[Tuple[int, int]]) -> None:
         """Called periodically to report trading activity on the market.
