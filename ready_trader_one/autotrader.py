@@ -4,18 +4,35 @@ from typing import List, Tuple
 
 from ready_trader_one import BaseAutoTrader, Instrument, Lifespan, Side
 
+"""
+OPTIONS FOR INSTRUMENTS: (in ascending order of count)
+    Instrument: use .FUTURE or .ETF
+    Lifespan: use .FILL_AND_KILL or .GOOD_FOR_DAY
+    Side: use .SELL or .BUY
+
+METHODS WE CAN AND SHOULD USE:
+    self.
+
+    send_amend_order(self, client_order_id: int, volume: int)
+
+    send_cancel_order(self, client_order_id: int)
+
+    send_insert_order(self, client_order_id: int, side: Side, price: int, volume: int, lifespan: Lifespan)
+
+    """
+
 
 class AutoTrader(BaseAutoTrader):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         """Initialise a new instance of the AutoTrader class."""
         super(AutoTrader, self).__init__(loop)
-        self.order_ids = itertools.count(1)
-        self.ask_id = 0
-        self.ask_price = 0
-        self.bid_id = 0
-        self.bid_price = 0
-        self.position = 0
-        self.future_position = 0
+        # self.order_ids = itertools.count(1)
+        # self.ask_id = 0
+        # self.ask_price = 0
+        # self.bid_id = 0
+        # self.bid_price = 0
+        # self.position = 0
+        # self.future_position = 0
 
     def on_error_message(self, client_order_id: int, error_message: bytes) -> None:
         """Called when the exchange detects an error.
@@ -23,6 +40,8 @@ class AutoTrader(BaseAutoTrader):
         If the error pertains to a particular order, then the client_order_id
         will identify that order, otherwise the client_order_id will be zero.
         """
+        # e.g:
+        # on_error_message(34, )
         pass
 
     def on_order_book_update_message(self, instrument: int, sequence_number: int, ask_prices: List[int],
@@ -34,12 +53,6 @@ class AutoTrader(BaseAutoTrader):
         prices are reported along with the volume available at each of those
         price levels.
         """
-        # Not sure what instrument is but: assuming bid_prices and ask_prices use a queue,
-        # Wtf does position refer to
-
-        bid_price_current = bid_prices[0]
-        ask_price_current = ask_prices[0]
-
 
         pass
 
@@ -62,9 +75,7 @@ class AutoTrader(BaseAutoTrader):
         future_position and etf_position will always be the inverse of each
         other (i.e. future_position == -1 * etf_position).
         """
-        self.posision = etf_position
-        self.future_position = future_position
-        print("\n\tPosition change!\n")
+        pass
 
     def on_trade_ticks_message(self, instrument: int, trade_ticks: List[Tuple[int, int]]) -> None:
         """Called periodically to report trading activity on the market.

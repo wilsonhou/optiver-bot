@@ -1,24 +1,35 @@
 import enum
 
+# Import Optional Typing
 from typing import Optional
 
 
 class Instrument(enum.IntEnum):
+    """Instrument used to check the types of instruments received in callback (as 0 or 1)"""
     FUTURE = 0
     ETF = 1
 
 
 class Side(enum.IntEnum):
+    """Side used to specify whether buying or selling"""
     SELL = 0
     BUY = 1
 
 
 class Lifespan(enum.IntEnum):
-    FILL_AND_KILL = 0  # Fill and kill orders trade immediately if possible, otherwise they are cancelled
-    GOOD_FOR_DAY = 1  # Good for day orders remain in the market until they trade or are explicitly cancelled
+    """Lifespan used as a callback option to specify type of order"""
+    # Fill and kill orders trade immediately if possible, otherwise they are cancelled
+    FILL_AND_KILL = 0
+    # Good for day orders remain in the market until they trade or are explicitly cancelled
+    GOOD_FOR_DAY = 1
+
+# ? Why do they all have I in front of their names?
+# ohh They're all base classes that force implementation of methods
 
 
 class ICompetitor(object):
+    """Errors will be raised if any method is called but not implemented"""
+
     def disconnect(self) -> None:
         """Disconnect this competitor."""
         raise NotImplementedError()

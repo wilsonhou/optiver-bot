@@ -1,0 +1,3 @@
+*.log
+match_events.csv
+__pycache__

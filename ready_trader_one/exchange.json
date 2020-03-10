@@ -2,7 +2,7 @@
   "Engine": {
     "MarketDataFile": "data/day1.csv",
     "MatchEventsFile": "match_events.csv",
-    "Speed": 1.0,
+    "Speed": 100.0,
     "TickInterval": 0.25
   },
   "Execution": {
@@ -21,7 +21,7 @@
   },
   "Instrument": {
     "EtfClamp": 0.002,
-    "TickSize": 1.00
+    "TickSize": 1.0
   },
   "Limits": {
     "ActiveOrderCountLimit": 10,

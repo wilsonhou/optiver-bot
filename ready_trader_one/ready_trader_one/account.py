@@ -1,11 +1,14 @@
 from .types import Instrument, Side
 
+# This is used by Optiver to track multiple accounts :)
+
 
 class CompetitorAccount(object):
     """A competitors account."""
 
     def __init__(self, tick_size: float, etf_clamp: float):
         """Initialise a new instance of the CompetitorAccount class."""
+        # everything starts at 0 pretty much
         self.account_balance: int = 0
         self.buy_volume: int = 0
         self.etf_clamp: float = etf_clamp
@@ -20,6 +23,8 @@ class CompetitorAccount(object):
 
     def transact(self, instrument: Instrument, side: Side, price: int, volume: int, fee: int) -> None:
         """Update this account with the specified transaction."""
+        # We provide a request to transact with above info
+        # Add or subtract the amount spent (P * V) then minus the fees
         if side == Side.SELL:
             self.account_balance += price * volume
         else:
@@ -28,6 +33,7 @@ class CompetitorAccount(object):
         self.account_balance -= fee
         self.total_fees += fee
 
+        # ! THIS LINE IS IMPORTANT!!!
         if instrument == Instrument.FUTURE:
             if side == Side.SELL:
                 self.future_position -= volume
@@ -44,11 +50,15 @@ class CompetitorAccount(object):
     def mark_to_market(self, future_price: int, etf_price: int) -> None:
         """Mark this account to market using the specified prices."""
         delta: int = round(self.etf_clamp * future_price)
+        # Make delta a multiple of tick size
         delta -= delta % self.tick_size
         min_price: int = future_price - delta
         max_price: int = future_price + delta
+        # Set the price to be the etf price is its within bounds, otherwise the closest default price
         clamped: int = min_price if etf_price < min_price else max_price if etf_price > max_price else etf_price
-        self.profit_or_loss = self.account_balance + self.future_position * future_price + self.etf_position * clamped
+        # Set the profit or loss of the account using this formula
+        self.profit_or_loss = self.account_balance + \
+            self.future_position * future_price + self.etf_position * clamped
         if self.profit_or_loss > self.max_profit:
             self.max_profit = self.profit_or_loss
         if self.max_profit - self.profit_or_loss > self.max_drawdown:

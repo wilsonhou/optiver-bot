@@ -79,6 +79,8 @@ class Level(object):
         """Return a string containing a description of this level object."""
         return "{order_count=%d, total_volume=%d}" % (len(self.order_queue), self.total_volume)
 
+# The object returned to us containing order book info
+
 
 class TopLevels(object):
     """The top prices and their respective volumes from an order book."""
@@ -93,7 +95,8 @@ class TopLevels(object):
 
     def __str__(self):
         """Return a string containing a description of this top-levels object."""
-        args = (self.ask_prices, self.ask_volumes, self.bid_prices, self.bid_volumes)
+        args = (self.ask_prices, self.ask_volumes,
+                self.bid_prices, self.bid_volumes)
         return "{ask_prices=%s, ask_volumes=%s, bid_prices=%s, bid_volumes=%s}" % args
 
 
@@ -106,7 +109,8 @@ class OrderBook(object):
         self.__bid_prices: List[int] = [MINIMUM_BID]
         self.__instrument: Instrument = instrument
         self.__last_traded_price: Optional[int] = None
-        self.__levels: Dict[int, Level] = {MINIMUM_BID: Level(), MAXIMUM_ASK: Level()}
+        self.__levels: Dict[int, Level] = {
+            MINIMUM_BID: Level(), MAXIMUM_ASK: Level()}
         self.__listener: Optional[ITradeListener] = listener
         self.__maker_fee: float = maker_fee
         self.__taker_fee: float = taker_fee
@@ -115,7 +119,8 @@ class OrderBook(object):
         """Amend an order in this order book by decreasing its volume."""
         if order.remaining_volume > 0:
             fill_volume = order.volume - order.remaining_volume
-            diff = order.volume - (fill_volume if new_volume < fill_volume else new_volume)
+            diff = order.volume - \
+                (fill_volume if new_volume < fill_volume else new_volume)
             self.remove_volume_from_level(order.price, diff, order.side)
             order.volume -= diff
             order.remaining_volume -= diff
@@ -133,7 +138,8 @@ class OrderBook(object):
     def cancel(self, now: float, order: Order) -> None:
         """Cancel an order in this order book."""
         if order.remaining_volume > 0:
-            self.remove_volume_from_level(order.price, order.remaining_volume, order.side)
+            self.remove_volume_from_level(
+                order.price, order.remaining_volume, order.side)
             remaining = order.remaining_volume
             order.remaining_volume = 0
             if order.listener:
@@ -141,6 +147,7 @@ class OrderBook(object):
 
     def insert(self, now: float, order: Order) -> None:
         """Insert a new order into this order book."""
+        # Auto Complete Order if it's low enough
         if order.side == Side.SELL and order.price <= self.__bid_prices[-1]:
             self.trade_ask(now, order)
         elif order.side == Side.BUY and order.price >= self.__ask_prices[-1]:
@@ -257,17 +264,21 @@ class OrderBook(object):
             passive.remaining_volume -= volume
             passive.total_fees += fee
             if passive.listener:
-                passive.listener.on_order_filled(now, passive, best_price, volume, fee)
+                passive.listener.on_order_filled(
+                    now, passive, best_price, volume, fee)
 
         level.total_volume = total_volume
         traded_volume_at_this_level: int = order.remaining_volume - remaining
 
-        fee: int = round(best_price * traded_volume_at_this_level * self.__taker_fee)
+        fee: int = round(
+            best_price * traded_volume_at_this_level * self.__taker_fee)
         order.remaining_volume = remaining
         order.total_fees += fee
         if order.listener:
-            order.listener.on_order_filled(now, order, best_price, traded_volume_at_this_level, fee)
+            order.listener.on_order_filled(
+                now, order, best_price, traded_volume_at_this_level, fee)
 
         self.__last_traded_price = best_price
         if self.__listener:
-            self.__listener.on_trade(self.__instrument, best_price, traded_volume_at_this_level)
+            self.__listener.on_trade(
+                self.__instrument, best_price, traded_volume_at_this_level)
