@@ -22,7 +22,6 @@ class AutoTrader(BaseAutoTrader):
     def on_order_book_update_message(self, instrument: int, sequence_number: int, ask_prices: List[int],
                                      ask_volumes: List[int], bid_prices: List[int], bid_volumes: List[int]) -> None:
         """Called periodically to report the status of an order book."""
-        self.logger.info("Hello world!")
         if instrument == Instrument.FUTURE:
             best_bid = bid_prices[0]
             best_ask = ask_prices[0]
