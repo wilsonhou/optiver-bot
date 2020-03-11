@@ -72,28 +72,32 @@ class AutoTrader(BaseAutoTrader):
             # find the current middle market price through a weighted average (TODO: REFACTOR THIS INTO MICRO PRICING)
             # * MAKE SURE THIS IS NON ZERO!!!
             # formulas linked in notes.md
+            if (bid_volumes[0] + ask_volumes[0]) == 0:
+                return
             imbalance = bid_volumes[0] / (bid_volumes[0] + ask_volumes[0])
             self.weighted_price = imbalance * \
                 ask_prices[0] + (1 - imbalance) * bid_prices[0]
 
             # calculate the spread that we need (TODO: REFACTOR THIS INTO AN ACTUAL ALGORITHM, NOT HARDCODED)
-            # right now this is slightly bigger than the taker's fee, 0.015 on both sides
-            ask_spread = bid_spread = 0.03 / 2  # TODO: LIMIT THIS TO 1 TICK MINIMUM
+            # right now this is slightly bigger than the taker's fee, 0.015 on both sides. default: 0.03 / 2
+            ask_spread = bid_spread = 0.01 / 2  # TODO: LIMIT THIS TO 1 TICK MINIMUM
 
             # TODO: adjust the spread based on current and target position (multiply by a percentage)
 
             # TODO: calculate ask volume based on percentage
-            ask_volume = bid_volume = 5
+            ask_volume = bid_volume = 1
 
-            #  send_insert_order(self, client_order_id: int, side: Side, price: int, volume: int, lifespan: Lifespan)
+            # calculate prices
+            bid_price = round(self.weighted_price * (
+                1 - bid_spread)) // 100 * 100
+            ask_price = round(self.weighted_price * (
+                1 + ask_spread)) // 100 * 100
 
-            # aggregate orders, set ids and put them on orders to post
-            self.pending_bid_id = next(self.order_ids)
-            self.pending_bid = (self.pending_bid_id, Side.BUY, self.weighted_price * (
-                1 + bid_spread), bid_volume, Lifespan.GOOD_FOR_DAY)
-            self.pending_ask_id = next(self.order_ids)
-            self.pending_ask = (self.pending_ask_id, Side.SELL, self.weighted_price * (
-                1 - ask_spread), bid_volume, Lifespan.GOOD_FOR_DAY)
+            # aggregate orders and put on pending
+            self.pending_bid = (Side.BUY,
+                                bid_price, bid_volume, Lifespan.GOOD_FOR_DAY)
+            self.pending_ask = (Side.SELL,
+                                ask_price, bid_volume, Lifespan.GOOD_FOR_DAY)
 
         else:
             # WHAT IF ITS A FUTURE???
@@ -114,12 +118,10 @@ class AutoTrader(BaseAutoTrader):
         # update the current orders
 
         # check if the order is a cancel order
-        if remaining_volume == 0 and (client_order_id == self.ask_id or client_order_id == self.bid_id):
+        if (client_order_id == self.ask_id or client_order_id == self.bid_id):
             # update ask and bid ids
             self.ask_id = self.pending_ask_id
             self.bid_id = self.pending_bid_id
-
-        pass
 
     def on_position_change_message(self, future_position: int, etf_position: int) -> None:
         """Called when your position changes.
@@ -133,7 +135,7 @@ class AutoTrader(BaseAutoTrader):
         # update position
         self.position = etf_position
 
-        # calculate skewness of spread
+        # TODO: calculate skewness of spread
 
     def on_trade_ticks_message(self, instrument: int, trade_ticks: List[Tuple[int, int]]) -> None:
         """Called periodically to report trading activity on the market.
@@ -142,21 +144,24 @@ class AutoTrader(BaseAutoTrader):
         traded at that price since the last trade ticks message.
         """
         # TODO: CHECK LOGIC
+        self.logger.info(self.pending_ask)
 
         # short circuit if None type
         if self.pending_ask is None or self.pending_bid is None:
             return
 
         # short circuit if no new pending id
-        if self.pending_ask_id == self.ask_id or self.pending_bid_id == self.bid_id:
-            return
+        # if self.pending_ask_id == self.ask_id or self.pending_bid_id == self.bid_id:
+        #     return
         # check current orders
 
         # place orders
 
-        self.send_insert_order(*self.pending_ask)
-        self.send_insert_order(*self.pending_bid)
+        self.logger.info(self.pending_ask)
 
         # cancel orders
         self.send_cancel_order(self.ask_id)
         self.send_cancel_order(self.bid_id)
+
+        self.send_insert_order(next(self.order_ids), *self.pending_ask)
+        self.send_insert_order(next(self.order_ids), *self.pending_bid)
