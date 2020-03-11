@@ -21,3 +21,8 @@
 ## TODO
 
 - Make a basic strategy for the bot.
+
+## VERY HELPFUL LINKS
+
+Peer reviewed article on micro-pricing: how do we implement this?
+https://www-tandfonline-com.ezproxy2.library.usyd.edu.au/doi/full/10.1080/14697688.2018.1489139

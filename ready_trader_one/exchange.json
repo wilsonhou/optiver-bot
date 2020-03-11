@@ -31,7 +31,7 @@
     "PositionLimit": 100
   },
   "Traders": {
-    "TraderOne": "secret",
+    "ZeroPercentRisk": "zeropercentrisk001",
     "ExampleOne": "qwerty",
     "ExampleTwo": "12345"
   }

@@ -1,11 +1,10 @@
 import asyncio
+import itertools
 import numpy
 
 from typing import List, Tuple
 
 from ready_trader_one import BaseAutoTrader, Instrument, Lifespan, Side
-
-# TODO: GET RID OF RETARDED COMMENTS - INCLUDING THIS ONE!!!
 
 """
 OPTIONS FOR INSTRUMENTS: (in ascending order of count)
@@ -24,16 +23,26 @@ METHODS WE CAN AND SHOULD USE:
 
     """
 
+# TODO: GET RID OF RETARDED COMMENTS - INCLUDING THIS ONE!!!
+# TODO: FINISH METHODS: on_order_book_update_message, on_order_status_message, on_position_change_message, on_trade_ticks_message
+
 
 class AutoTrader(BaseAutoTrader):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         """Initialise a new instance of the AutoTrader class."""
         super(AutoTrader, self).__init__(loop)
         # initialise some more variables, such as an internal id counter
+        self.order_ids = itertools.count(1)
+        self.sequence_count = -1
+        self.pending_bid = None
+        self.pending_bid_id = 0
+        self.pending_ask = None
+        self.pending_ask_id = 0
 
         # Initialising variables
-        # * Don't track future position since its just negative ETF position
-        self.ask_id = self.ask_price = self.bid_id = self.bid_price = self.position = 0
+        # Don't track future position since its just negative ETF position
+        # TODO: REFACTOR ASK ID AND BID ID OUT
+        self.ask_id = self.ask_price = self.bid_id = self.bid_price = self.position = self.weighted_price = 0
 
     def on_error_message(self, client_order_id: int, error_message: bytes) -> None:
         """Called when the exchange detects an error.
@@ -56,16 +65,38 @@ class AutoTrader(BaseAutoTrader):
         price levels.
         """
 
-        if instrument == Instrument.ETF:
-            # find the current middle market price through a weighted average
+        if instrument == Instrument.ETF and sequence_number > self.sequence_count:
+            # make sure this is in right order
+            sequence_number = self.sequence_count
 
-            # calculate the spread that we need
+            # find the current middle market price through a weighted average (TODO: REFACTOR THIS INTO MICRO PRICING)
+            # * MAKE SURE THIS IS NON ZERO!!!
+            # formulas linked in notes.md
+            imbalance = bid_volumes[0] / (bid_volumes[0] + ask_volumes[0])
+            self.weighted_price = imbalance * \
+                ask_prices[0] + (1 - imbalance) * bid_prices[0]
 
-            # adjust the spread based on current and target position (multiply by a percentage)
+            # calculate the spread that we need (TODO: REFACTOR THIS INTO AN ACTUAL ALGORITHM, NOT HARDCODED)
+            # right now this is slightly bigger than the taker's fee, 0.015 on both sides
+            ask_spread = bid_spread = 0.03 / 2  # TODO: LIMIT THIS TO 1 TICK MINIMUM
 
-            # aggregate order and put them on orders to post
-            pass
+            # TODO: adjust the spread based on current and target position (multiply by a percentage)
+
+            # TODO: calculate ask volume based on percentage
+            ask_volume = bid_volume = 5
+
+            #  send_insert_order(self, client_order_id: int, side: Side, price: int, volume: int, lifespan: Lifespan)
+
+            # aggregate orders, set ids and put them on orders to post
+            self.pending_bid_id = next(self.order_ids)
+            self.pending_bid = (self.pending_bid_id, Side.BUY, self.weighted_price * (
+                1 + bid_spread), bid_volume, Lifespan.GOOD_FOR_DAY)
+            self.pending_ask_id = next(self.order_ids)
+            self.pending_ask = (self.pending_ask_id, Side.SELL, self.weighted_price * (
+                1 - ask_spread), bid_volume, Lifespan.GOOD_FOR_DAY)
+
         else:
+            # WHAT IF ITS A FUTURE???
             pass
 
         pass
@@ -82,6 +113,12 @@ class AutoTrader(BaseAutoTrader):
         """
         # update the current orders
 
+        # check if the order is a cancel order
+        if remaining_volume == 0 and (client_order_id == self.ask_id or client_order_id == self.bid_id):
+            # update ask and bid ids
+            self.ask_id = self.pending_ask_id
+            self.bid_id = self.pending_bid_id
+
         pass
 
     def on_position_change_message(self, future_position: int, etf_position: int) -> None:
@@ -90,12 +127,13 @@ class AutoTrader(BaseAutoTrader):
         Since every trade in the ETF is automatically hedged in the future,
         future_position and etf_position will always be the inverse of each
         other (i.e. future_position == -1 * etf_position).
+
+        Goal position is 0.
         """
         # update position
+        self.position = etf_position
 
         # calculate skewness of spread
-
-        self.position = etf_position
 
     def on_trade_ticks_message(self, instrument: int, trade_ticks: List[Tuple[int, int]]) -> None:
         """Called periodically to report trading activity on the market.
@@ -103,9 +141,22 @@ class AutoTrader(BaseAutoTrader):
         Each trade tick is a pair containing a price and the number of lots
         traded at that price since the last trade ticks message.
         """
+        # TODO: CHECK LOGIC
+
+        # short circuit if None type
+        if self.pending_ask is None or self.pending_bid is None:
+            return
+
+        # short circuit if no new pending id
+        if self.pending_ask_id == self.ask_id or self.pending_bid_id == self.bid_id:
+            return
         # check current orders
 
-        # check pending orders
+        # place orders
 
-        # cancel previous orders and place pending orders
-        pass
+        self.send_insert_order(*self.pending_ask)
+        self.send_insert_order(*self.pending_bid)
+
+        # cancel orders
+        self.send_cancel_order(self.ask_id)
+        self.send_cancel_order(self.bid_id)
