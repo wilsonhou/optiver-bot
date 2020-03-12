@@ -37,7 +37,7 @@ class AutoTrader(BaseAutoTrader):
         # Initialising variables
         # Don't track future position since its just negative ETF position
         # TODO: REFACTOR ASK ID AND BID ID OUT
-        self.ask_id = self.ask_price = self.bid_id = self.bid_price = self.position = self.true_price = 0
+        self.ask_id = self.ask_price = self.ask_spread = self.bid_id = self.bid_price = self.bid_spread = self.position = self.true_price = 0
 
     def on_error_message(self, client_order_id: int, error_message: bytes) -> None:
         """Called when the exchange detects an error.
@@ -72,26 +72,19 @@ class AutoTrader(BaseAutoTrader):
                 ask_prices[0] + (1 - imbalance) * bid_prices[0]
 
             # calculate the spread that we need (TODO: REFACTOR THIS INTO AN ACTUAL ALGORITHM, NOT HARDCODED)
-            # right now this is slightly bigger than the taker's fee, 0.015 on both sides. default: 0.03 / 2
-            # perhaps store this as an instance variable and skew it?
-            ask_spread = bid_spread = 0.01 / 2  # TODO: LIMIT THIS TO 1 TICK MINIMUM
 
-            # TODO: skew the spread better than this
-            if self.position > 10:
-                ask_spread *= 1.2
-                bid_spread *= 0.8
-            elif self.position < -10:
-                bid_spread *= 1.2
-                ask_spread *= 0.8
+            # make the spread the max of bid
+            ask_spread = self.ask_spread
+            bid_spread = self.bid_spread
 
             # TODO: calculate volume based on percentage
             ask_volume = bid_volume = 1
 
             # calculate prices
-            bid_price = round(self.true_price * (
-                1 - bid_spread)) // 100 * 100
-            ask_price = round(self.true_price * (
-                1 + ask_spread)) // 100 * 100
+            bid_price = round(self.true_price -
+                              bid_spread) // 100 * 100 - self.position * 100
+            ask_price = round(self.true_price +
+                              ask_spread) // 100 * 100 - self.position * 100
 
             # check that price is different to current price
             if self.bid_id != 0 and bid_price not in (self.bid_price, 0):
@@ -115,11 +108,18 @@ class AutoTrader(BaseAutoTrader):
                 self.send_insert_order(self.ask_id, Side.SELL,
                                        ask_price, bid_volume, Lifespan.GOOD_FOR_DAY)
 
-        else:
-            # WHAT IF ITS A FUTURE???
-            pass
+        elif instrument == Instrument.FUTURE:
+            # Find the optimal spread based on the future!!!
 
-        pass
+            # ! THIS STRATEGY IS JUST SPECULATED, IMPROVE THIS IN NEXT VERSION PLEASE
+            if 0 not in bid_prices and 0 not in ask_prices and self.true_price != 0:
+
+                # our spread is the minimum of the future spreads
+                self.bid_spread = self.ask_spread = max(
+                    self.true_price - bid_prices[0], ask_prices[0] - self.true_price)
+                self.logger.info(f"UPDATED SPREAD: {self.bid_spread}")
+        else:
+            self.logger.warning(f"OUT OF ORDER: {sequence_number}")
 
     def on_order_status_message(self, client_order_id: int, fill_volume: int, remaining_volume: int, fees: int) -> None:
         """Called when the status of one of your orders changes.
