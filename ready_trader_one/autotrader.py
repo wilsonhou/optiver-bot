@@ -1,6 +1,5 @@
 import asyncio
 import itertools
-import numpy
 
 from typing import List, Tuple
 
@@ -82,9 +81,17 @@ class AutoTrader(BaseAutoTrader):
             # right now this is slightly bigger than the taker's fee, 0.015 on both sides. default: 0.03 / 2
             ask_spread = bid_spread = 0.01 / 2  # TODO: LIMIT THIS TO 1 TICK MINIMUM
 
+            # hardcode a position thingo
+            if self.position > 10:
+                ask_spread *= 1.2
+                bid_spread *= 0.8
+            elif self.position < -10:
+                bid_spread *= 1.2
+                ask_spread *= 0.8
+
             # TODO: adjust the spread based on current and target position (multiply by a percentage)
 
-            # TODO: calculate ask volume based on percentage
+            # TODO: calculate volume based on percentage
             ask_volume = bid_volume = 1
 
             # calculate prices
@@ -119,7 +126,8 @@ class AutoTrader(BaseAutoTrader):
 
         # check if the order is a cancel order
         if (client_order_id == self.ask_id or client_order_id == self.bid_id):
-            # update ask and bid ids
+            # ? update ask and bid ids
+            # this is probably broken idk tho
             self.ask_id = self.pending_ask_id
             self.bid_id = self.pending_bid_id
 
@@ -151,6 +159,7 @@ class AutoTrader(BaseAutoTrader):
             return
 
         # short circuit if no new pending id
+        # ! IDK FIX THIS
         # if self.pending_ask_id == self.ask_id or self.pending_bid_id == self.bid_id:
         #     return
         # check current orders
