@@ -21,8 +21,6 @@ METHODS WE CAN AND SHOULD USE:
     send_insert_order(self, client_order_id: int, side: Side, price: int, volume: int, lifespan: Lifespan)
 
     """
-
-# TODO: GET RID OF RETARDED COMMENTS - INCLUDING THIS ONE!!!
 # TODO: FINISH METHODS: on_order_book_update_message, on_order_status_message, on_position_change_message, on_trade_ticks_message
 
 
@@ -45,7 +43,7 @@ class AutoTrader(BaseAutoTrader):
         If the error pertains to a particular order, then the client_order_id
         will identify that order, otherwise the client_order_id will be zero.
         """
-        # just log some shit lol
+        # just log some stuff
         self.logger.warning("error with order %d: %s",
                             client_order_id, error_message.decode())
         self.on_order_status_message(client_order_id, 0, 0, 0)
@@ -77,7 +75,7 @@ class AutoTrader(BaseAutoTrader):
             ask_spread = self.ask_spread
             bid_spread = self.bid_spread
 
-            # TODO: calculate volume based on percentage
+            # set ask and bid volume (hardcoded rn)
             ask_volume = bid_volume = 1
 
             # calculate prices
